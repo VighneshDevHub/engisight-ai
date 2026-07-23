@@ -20,7 +20,10 @@ router = APIRouter()
 
 ALLOWED_CONTENT_TYPES = {"application/pdf", "image/png", "image/jpeg", "image/tiff"}
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
-ALLOWED_DRAWING_TYPES = {"baseline", "revision"}
+# "baseline"/"revision" are Phase 1 (drawing comparison). "pid" is Phase 2
+# (P&ID intelligence) — kept in the same table/endpoint since upload, storage,
+# and ownership logic is identical; only the downstream processing differs.
+ALLOWED_DRAWING_TYPES = {"baseline", "revision", "pid"}
 
 
 @router.post("/upload", response_model=DrawingRead, status_code=status.HTTP_201_CREATED)

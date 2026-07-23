@@ -231,6 +231,123 @@ Groq/LangChain structuring into normalized parameter JSON).
 
 ---
 
+# PHASE 2 — P&ID Intelligence & Automated BoM Generation
+
+## Config change carried over from Phase 1
+
+Groq deprecated `llama-3.3-70b-versatile` (2026-06-17). Update your `backend/.env`:
+```
+GROQ_MODEL=openai/gpt-oss-120b
+GROQ_VISION_MODEL=qwen/qwen3.6-27b
+```
+Note: `qwen/qwen3.6-27b` is currently a **preview-tier** model on Groq (not production-SLA'd).
+This is a known, accepted risk — if P&ID recognition suddenly breaks, check Groq's model
+status page first.
+
+## Step 1: Data model + P&ID upload reuse
+
+Proves that Phase 1's upload/storage layer extends cleanly to a new document type
+(P&ID drawings) without duplicating any code — only the `drawing_type` enum grows.
+
+### New files
+```
+backend/
+├── app/models/bom_item.py            # recognized component + traceability
+├── app/models/connectivity_edge.py   # traced line between two components
+├── app/schemas/bom.py
+├── alembic/versions/0005_create_bom_and_connectivity_tables.py
+└── app/tests/test_pid_upload.py
+```
+
+### Changed files
+- `app/api/v1/endpoints/drawings.py` — `ALLOWED_DRAWING_TYPES` now includes `"pid"`
+
+### How to run the migration
+```bash
+docker compose up -d postgres   # or your native postgres
+cd backend
+alembic upgrade head
+```
+
+### How to test it
+```bash
+cd backend
+pytest -v
+```
+Expected: all Phase 1 tests still pass (regression check), plus
+`test_upload_pid_drawing_type_accepted` — uploads a `pid`-typed drawing, confirms
+`baseline`/`revision` still work unchanged, confirms invalid types still rejected.
+
+**Manual:** upload a real P&ID PDF via Swagger or the `/drawings` page with
+`drawing_type=pid` — confirm it appears in the list and downloads correctly,
+exactly like Phase 1 drawings.
+
+### Definition of done for Step 1
+- [ ] `alembic upgrade head` creates `bom_items` and `connectivity_edges` tables
+- [ ] `pytest -v` passes all tests, old and new
+- [ ] A real P&ID PDF uploads successfully with `drawing_type=pid`
+
+Once verified, tell me and we move to **Step 2: Region proposal + vision-LLM
+component recognition → BoM generation** — the core Phase 2 AI feature.
+
+---
+
+## Known issues (found during manual Windows setup, already fixed in this repo)
+
+These were discovered running the project outside Docker on Windows and are
+already patched in `requirements.txt`/`Dockerfile`/`.env` — documented here so
+they're understood, not re-discovered:
+
+1. **`passlib` + `bcrypt` incompatibility** — `passlib==1.7.4` breaks with
+   `bcrypt>=4.1` (`AttributeError: module 'bcrypt' has no attribute '__about__'`,
+   plus a spurious `password cannot be longer than 72 bytes` error). Fixed by
+   pinning `bcrypt==4.0.1`.
+
+2. **`grpcio-tools` has no Python 3.12 wheel below v1.62** — pip tries to build
+   older versions from source and fails (`ModuleNotFoundError: No module named
+   'pkg_resources'`) because of an isolated-build-environment quirk. Fixed by
+   pinning `grpcio==1.82.1` / `grpcio-tools==1.82.1` explicitly so pip's resolver
+   never backtracks into the broken range.
+
+3. **`paddlepaddle` vs `qdrant-client` protobuf conflict** — `paddlepaddle==2.6.2`
+   (Windows) requires `protobuf<=3.20.2`; `qdrant-client`'s `grpcio-tools` needs
+   `protobuf>=7.35.1`. Both cannot be satisfied simultaneously. Fixed by removing
+   `paddlepaddle` from the requirements files and installing it separately with
+   `--no-deps`, then installing its real (non-conflicting) dependencies by hand:
+   ```
+   pip install paddlepaddle==2.6.2 --no-deps
+   pip install decorator astor opt-einsum
+   ```
+
+4. **`Descriptors cannot be created directly` at runtime** — paddlepaddle's
+   bundled protobuf-generated files are incompatible with the newer protobuf
+   package installed for qdrant-client. Fixed by setting, in every terminal
+   session before running `uvicorn` or `celery`:
+   ```
+   # PowerShell
+   $env:PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION="python"
+   # cmd.exe
+   set PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+   ```
+   (Baked into the Dockerfile as an `ENV` line, so Docker users never hit this.)
+
+5. **Celery worker `NoReferencedTableError` on `drawings.uploaded_by`** — the
+   Celery worker process imports `tasks.py` standalone, which never imported
+   the `User` model, so SQLAlchemy didn't know the `users` table existed when
+   resolving `Drawing.uploaded_by`'s foreign key. Fixed by adding
+   `from app.models.user import User  # noqa: F401` to `app/workers/tasks.py`.
+
+6. **Windows path length limit (260 chars)** — PyTorch ships deeply nested
+   license files that can exceed Windows' default path length limit, causing
+   `WinError 206`. Fixed by enabling long path support
+   (`HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled=1`,
+   requires reboot) and/or using a shorter project path.
+
+7. **Groq model deprecation** — `llama-3.3-70b-versatile` was deprecated by
+   Groq on 2026-06-17. Migrated to `openai/gpt-oss-120b` (still served via Groq).
+
+---
+
 # Step 4: AI Extraction Pipeline
 
 This is where the actual AI/CV pipeline enters the project. A drawing is downloaded
