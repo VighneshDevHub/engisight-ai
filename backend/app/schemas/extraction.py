@@ -9,6 +9,7 @@ class ExtractedParameterRead(BaseModel):
 
     id: uuid.UUID
     drawing_id: uuid.UUID
+    extraction_run_id: uuid.UUID | None
     parameter_name: str
     parameter_value: str
     unit: str | None
@@ -23,3 +24,14 @@ class ExtractionTriggerResponse(BaseModel):
     task_id: str
     drawing_id: uuid.UUID
     status: str
+
+
+class ExtractionRunRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    extraction_run_id: uuid.UUID
+    drawing_id: uuid.UUID
+    run_type: str
+    item_count: int
+    created_at: datetime
+

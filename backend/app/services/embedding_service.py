@@ -1,11 +1,14 @@
-from sentence_transformers import SentenceTransformer
+from typing import TYPE_CHECKING, Any
 
 from app.core.config import settings
 
-_embedding_model: SentenceTransformer | None = None
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+
+_embedding_model: Any | None = None
 
 
-def get_embedding_model() -> SentenceTransformer:
+def get_embedding_model() -> Any:
     """
     Lazily-loaded singleton. Runs locally (CPU is fine for MiniLM-L6-v2) —
     deliberately not an API call, since embedding every parameter name/value
@@ -14,6 +17,8 @@ def get_embedding_model() -> SentenceTransformer:
     """
     global _embedding_model
     if _embedding_model is None:
+        from sentence_transformers import SentenceTransformer
+
         _embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL)
     return _embedding_model
 

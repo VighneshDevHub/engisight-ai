@@ -1,4 +1,5 @@
 from typing import TypedDict
+import uuid
 
 from langgraph.graph import END, StateGraph
 
@@ -20,6 +21,7 @@ class ExtractionState(TypedDict):
     structured_parameters: list[dict]
     retry_count: int
     avg_ocr_confidence: float
+    trace_id: uuid.UUID | None
 
 
 def node_load_and_preprocess(state: ExtractionState) -> ExtractionState:
@@ -57,7 +59,7 @@ def node_run_detection(state: ExtractionState) -> ExtractionState:
 
 def node_structure_with_llm(state: ExtractionState) -> ExtractionState:
     text_blocks = [b["text"] for b in state["ocr_results"]]
-    structured = structure_ocr_text(text_blocks)
+    structured = structure_ocr_text(text_blocks, trace_id=state.get("trace_id"))
 
     enriched = []
     for param in structured:
@@ -121,7 +123,12 @@ def build_extraction_graph():
     return graph.compile()
 
 
-def run_extraction_pipeline(file_bytes: bytes, content_type: str) -> ExtractionState:
+def run_extraction_pipeline(
+    file_bytes: bytes,
+    content_type: str,
+    *,
+    trace_id: uuid.UUID | None = None,
+) -> ExtractionState:
     graph = build_extraction_graph()
     initial_state: ExtractionState = {
         "file_bytes": file_bytes,
@@ -132,5 +139,6 @@ def run_extraction_pipeline(file_bytes: bytes, content_type: str) -> ExtractionS
         "structured_parameters": [],
         "retry_count": 0,
         "avg_ocr_confidence": 0.0,
+        "trace_id": trace_id,
     }
     return graph.invoke(initial_state)

@@ -1,14 +1,19 @@
 import { apiClient } from "./api-client";
 
+export type DrawingType = "baseline" | "revision" | "pid" | "requirements";
+export type DrawingStatus = "uploaded" | "processing" | "processed" | "failed";
+
 export type Drawing = {
   id: string;
   project_code: string;
+  project_id: string | null;
   drawing_number: string;
-  drawing_type: "baseline" | "revision";
+  drawing_type: DrawingType;
   original_filename: string;
   content_type: string;
   file_size_bytes: number;
-  status: string;
+  sha256: string;
+  status: DrawingStatus;
   uploaded_by: string;
   created_at: string;
 };
@@ -16,11 +21,16 @@ export type Drawing = {
 export async function uploadDrawing(
   projectCode: string,
   drawingNumber: string,
-  drawingType: "baseline" | "revision",
-  file: File
+  drawingType: DrawingType,
+  file: File,
+  opts?: { projectId?: string }
 ) {
   const formData = new FormData();
-  formData.append("project_code", projectCode);
+  if (opts?.projectId) {
+    formData.append("project_id", opts.projectId);
+  } else {
+    formData.append("project_code", projectCode);
+  }
   formData.append("drawing_number", drawingNumber);
   formData.append("drawing_type", drawingType);
   formData.append("file", file);
@@ -31,10 +41,11 @@ export async function uploadDrawing(
   return data;
 }
 
-export async function listDrawings(projectCode?: string) {
-  const { data } = await apiClient.get<Drawing[]>("/drawings", {
-    params: projectCode ? { project_code: projectCode } : {},
-  });
+export async function listDrawings(projectCode?: string, projectId?: string) {
+  const params: Record<string, string> = {};
+  if (projectCode) params.project_code = projectCode;
+  if (projectId) params.project_id = projectId;
+  const { data } = await apiClient.get<Drawing[]>("/drawings", { params });
   return data;
 }
 
@@ -49,3 +60,8 @@ export async function getDownloadUrl(drawingId: string) {
   );
   return data;
 }
+
+export async function deleteDrawing(drawingId: string) {
+  await apiClient.delete(`/drawings/${drawingId}`);
+}
+

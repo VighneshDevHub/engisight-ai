@@ -1,15 +1,40 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_current_user
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import (
+    create_access_token,
+    hash_password,
+    validate_password_complexity,
+    verify_password,
+)
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserLogin, UserRead
 
 router = APIRouter()
+
+
+async def _parse_login_payload(request: Request) -> UserLogin:
+    """
+    Accepts login via both JSON body (frontend SPA) and standard OAuth2
+    application/x-www-form-urlencoded (Swagger's "Authorize" button, curl,
+    third-party clients). Keeps the endpoint spec-compliant *and* SPA-friendly
+    without duplicating the whole handler.
+    """
+    content_type = request.headers.get("content-type", "")
+    if "application/x-www-form-urlencoded" in content_type:
+        form = await request.form()
+        # OAuth2 convention: field is `username`, but our auth uses email.
+        # Accept both so Swagger's built-in form works out of the box.
+        email = form.get("username") or form.get("email")
+        password = form.get("password")
+        return UserLogin(email=email or "", password=password or "")
+
+    body = await request.json()
+    return UserLogin(**body)
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
@@ -19,6 +44,17 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A user with this email already exists",
+        )
+
+    ok, missing = validate_password_complexity(payload.password)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Password does not meet complexity requirements. "
+                f"Need 3 of: uppercase letter, lowercase letter, digit, symbol. "
+                f"Missing: {', '.join(missing)}."
+            ),
         )
 
     user = User(
@@ -33,7 +69,15 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        payload = await _parse_login_payload(request)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid login payload. Send JSON {email, password} or OAuth2 form (username=email, password=...).",
+        )
+
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 

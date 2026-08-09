@@ -1,10 +1,13 @@
 import numpy as np
-from paddleocr import PaddleOCR
+from typing import TYPE_CHECKING, Any
 
-_ocr_engine: PaddleOCR | None = None
+if TYPE_CHECKING:
+    from paddleocr import PaddleOCR
+
+_ocr_engine: Any | None = None
 
 
-def get_ocr_engine() -> PaddleOCR:
+def get_ocr_engine() -> Any:
     """
     Lazily-loaded singleton — PaddleOCR loads its detection + recognition
     models on first use (auto-downloaded on first run; needs internet access
@@ -12,6 +15,8 @@ def get_ocr_engine() -> PaddleOCR:
     """
     global _ocr_engine
     if _ocr_engine is None:
+        from paddleocr import PaddleOCR
+
         _ocr_engine = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
     return _ocr_engine
 

@@ -24,6 +24,9 @@ class BomItem(Base):
     drawing_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("drawings.id"), nullable=False, index=True
     )
+    extraction_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
 
     # e.g. "gate valve", "centrifugal pump", "pressure transmitter"
     component_type: Mapped[str] = mapped_column(String(255), nullable=False)

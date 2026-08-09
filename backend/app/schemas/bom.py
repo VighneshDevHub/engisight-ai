@@ -9,6 +9,7 @@ class BomItemRead(BaseModel):
 
     id: uuid.UUID
     drawing_id: uuid.UUID
+    extraction_run_id: uuid.UUID | None
     component_type: str
     tag: str | None
     specification: str | None

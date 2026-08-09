@@ -24,6 +24,9 @@ class ConnectivityEdge(Base):
     drawing_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("drawings.id"), nullable=False, index=True
     )
+    extraction_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
     source_component_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("bom_items.id"), nullable=False
     )

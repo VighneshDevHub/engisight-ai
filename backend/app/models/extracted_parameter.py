@@ -14,6 +14,13 @@ class ExtractedParameter(Base):
     {name: "Line pressure rating", value: "150", unit: "psi"} — with enough
     provenance (page, bbox, verbatim OCR snippet) to trace it back to the
     exact spot on the original drawing it came from.
+
+    Phase 3A adds extraction_run_id: every re-run of the extraction pipeline
+    writes a NEW set of rows with a NEW extraction_run_id (instead of the
+    old DELETE-then-INSERT pattern). Engineers can therefore compare two
+    runs (e.g. "why did v2 classify Material as SS304 when v1 said SS316?").
+    The "active/latest" run for a drawing is simply the max(created_at) or
+    max(extraction_run_id creation time) per drawing_id.
     """
 
     __tablename__ = "extracted_parameters"
@@ -23,6 +30,9 @@ class ExtractedParameter(Base):
     )
     drawing_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("drawings.id"), nullable=False, index=True
+    )
+    extraction_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
     )
 
     parameter_name: Mapped[str] = mapped_column(String(255), nullable=False)

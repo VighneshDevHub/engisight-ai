@@ -70,3 +70,17 @@ def delete_comparison_collection(comparison_id: uuid.UUID) -> None:
         client.delete_collection(collection_name=name)
     except Exception:
         pass  # already gone / never created — not worth failing the job over
+
+
+def health_check() -> bool:
+    """
+    Lightweight liveness check for the Qdrant vector-store layer. Verifies we
+    can actually open a connection and list collections (a no-op read) — does
+    NOT mutate anything, so safe to call on every readiness probe.
+    """
+    try:
+        client = get_qdrant_client()
+        client.get_collections()
+        return True
+    except Exception:
+        return False

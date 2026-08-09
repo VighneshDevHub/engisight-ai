@@ -1,7 +1,19 @@
-from langchain_groq import ChatGroq
+"""
+Text structuring LLM service — REFACTORED Phase 3A to use the multi-provider
+router. Identical API to the prior version: call structure_ocr_text(blocks)
+and receive list[ExtractedParameterLLM].
+
+The router provides: Groq (primary, llama-3.3-70b-versatile) → OpenAI
+→ Google, with structured_output retries. Only a very thin wrapper now.
+"""
+
+from __future__ import annotations
+
+import uuid
+
 from pydantic import BaseModel, Field
 
-from app.core.config import settings
+from app.services.model_provider import InferenceTask, ProviderPriority, get_router
 
 
 class ExtractedParameterLLM(BaseModel):
@@ -23,21 +35,6 @@ class ExtractedParameterList(BaseModel):
     parameters: list[ExtractedParameterLLM]
 
 
-_llm = None
-
-
-def get_llm():
-    global _llm
-    if _llm is None:
-        if settings.LLM_PROVIDER != "groq":
-            raise NotImplementedError(
-                f"LLM_PROVIDER={settings.LLM_PROVIDER} not wired yet — only 'groq' is implemented. "
-                "Add a branch here when a second provider is needed."
-            )
-        _llm = ChatGroq(model=settings.GROQ_MODEL, api_key=settings.GROQ_API_KEY, temperature=0)
-    return _llm
-
-
 STRUCTURING_PROMPT = """You are an engineering document analyst reviewing OCR text \
 extracted from an engineering drawing (mechanical, piping, structural, or civil).
 
@@ -57,16 +54,25 @@ OCR TEXT BLOCKS:
 """
 
 
-def structure_ocr_text(ocr_text_blocks: list[str]) -> list[ExtractedParameterLLM]:
-    """
-    Sends already-OCR'd text (not images) to Groq for structuring/classification.
-    This is why Groq's lack of strong vision support doesn't matter here — the
-    visual extraction already happened via PaddleOCR/YOLOv11 upstream.
-    """
+def structure_ocr_text(
+    ocr_text_blocks: list[str],
+    *,
+    trace_id: uuid.UUID | None = None,
+) -> list[ExtractedParameterLLM]:
     if not ocr_text_blocks:
         return []
 
-    llm = get_llm().with_structured_output(ExtractedParameterList)
     prompt = STRUCTURING_PROMPT.format(ocr_text="\n".join(ocr_text_blocks))
-    result: ExtractedParameterList = llm.invoke(prompt)
+    router = get_router()
+    result: ExtractedParameterList = router.text_structured_with_failover(
+        prompt=prompt,
+        pydantic_schema=ExtractedParameterList,
+        priority=ProviderPriority.COST,  # text is cheaper to run on multiple providers; prefer lowest cost
+        trace_id=trace_id,
+        metadata={
+            "ocr_block_count": len(ocr_text_blocks),
+            "approx_chars": sum(len(b) for b in ocr_text_blocks),
+            "task": "drawing_parameter_structuring",
+        },
+    )
     return result.parameters

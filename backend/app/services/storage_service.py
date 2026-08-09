@@ -49,5 +49,30 @@ class StorageService:
     def delete_object(self, object_key: str) -> None:
         self.client.delete_object(Bucket=self.bucket, Key=object_key)
 
+    def object_exists(self, object_key: str) -> bool:
+        """
+        Lightweight existence check used by the upload endpoint for byte-level
+        deduplication — avoids PUTting the same object twice under different
+        keys. Returns False on any error (bucket unreachable, bad key) so the
+        caller falls back to a fresh upload rather than silently skipping one.
+        """
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=object_key)
+            return True
+        except Exception:
+            return False
+
+    def health_check(self) -> bool:
+        """
+        Lightweight liveness check for the object-store layer. Verifies we can
+        actually talk to MinIO and the bucket exists (or can be listed) — does
+        NOT mutate anything, so safe to call on every readiness probe.
+        """
+        try:
+            existing = [b["Name"] for b in self.client.list_buckets().get("Buckets", [])]
+            return self.bucket in existing
+        except Exception:
+            return False
+
 
 storage_service = StorageService()

@@ -1,3 +1,198 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Light Theme — Maritime / Engineering Palette
+     Navy + cyan + steel greys, per user preference (avoid AI-marketing look). */
+  --bg-app: #f3f6fa;          /* steel-50 */
+  --bg-card: #ffffff;
+  --bg-sidebar: #091530;      /* navy-950 */
+  --border-card: #cbd8e5;     /* steel-200 */
+  --text-primary: #1e3d6c;    /* navy-700 */
+  --text-secondary: #364a64;  /* steel-700 */
+  --text-muted: #7693b5;      /* steel-400 */
+  --accent-blue: #274d86;     /* navy-600 */
+  --accent-blue-hover: #1e3d6c;
+  --accent-cyan: #0ea5b5;     /* cyan-550 */
+  --accent-cyan-soft: #e6f7f9;
+  --accent-green: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-rose: #ef4444;
+  --accent-navy: #0f2142;     /* navy-900 */
+}
+
+.dark {
+  --bg-app: #091530;          /* navy-950 */
+  --bg-card: #0f2142;         /* navy-900 */
+  --bg-sidebar: #070c1c;
+  --border-card: #274d86;     /* navy-600 */
+  --text-primary: #e5ecf3;    /* steel-100 */
+  --text-secondary: #a4b9d0;  /* steel-300 */
+  --text-muted: #567498;      /* steel-500 */
+  --accent-blue: #3663a3;     /* navy-500 */
+  --accent-blue-hover: #5682bf;
+  --accent-cyan: #16c7d9;     /* cyan-450 */
+  --accent-cyan-soft: #173056;
+  --accent-green: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --accent-navy: #0f2142;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+.dark .glass-panel {
+  background: rgba(17, 24, 39, 0.85);
+  border: 1px solid rgba(31, 41, 55, 0.8);
+}
+
+/* Custom Badges */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.badge-active { background: #dcfce7; color: #15803d; }
+.badge-processing { background: #fffbeb; color: #b45309; }
+.badge-completed { background: #dcfce7; color: #15803d; }
+.badge-failed { background: #fef2f2; color: #b91c1c; }
+.badge-archived { background: #f1f5f9; color: #475569; }
+.badge-high { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.badge-medium { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+.badge-low { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+.dark .badge-active { background: #064e3b; color: #6ee7b7; }
+.dark .badge-processing { background: #78350f; color: #fde68a; }
+.dark .badge-completed { background: #064e3b; color: #6ee7b7; }
+.dark .badge-failed { background: #7f1d1d; color: #fca5a5; }
+.dark .badge-archived { background: #1e293b; color: #94a3b8; }
+.dark .badge-high { background: #7f1d1d; color: #fca5a5; border-color: #991b1b; }
+.dark .badge-medium { background: #78350f; color: #fde68a; border-color: #92400e; }
+.dark .badge-low { background: #064e3b; color: #6ee7b7; border-color: #065f46; }
+
+/* Custom Inputs & Buttons */
+.btn-primary {
+  background: var(--accent-blue);
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary:hover {
+  background: var(--accent-blue-hover);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-card);
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.btn-secondary:hover {
+  background: var(--bg-app);
+  color: var(--text-primary);
+  border-color: #cbd5e1;
+}
+
+.input-field {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.input-field:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
