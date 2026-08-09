@@ -29,7 +29,6 @@ const NAV_GROUPS = [
       { href: "/comparisons", label: "AI Analysis", icon: GitCompare },
       { href: "/pid-intelligence", label: "P&ID Intelligence", icon: Workflow },
       { href: "/requirements", label: "Requirements", icon: ShieldCheck },
-      { href: "/maritime", label: "Maritime Suite", icon: Calculator },
       { href: "/assistant", label: "AI Assistant", icon: Bot },
     ],
   },
